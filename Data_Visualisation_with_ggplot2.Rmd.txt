@@ -1,0 +1,606 @@
+---
+title: "Data Visualisation with ggplot2 - Project"
+output:
+  html_document:
+    df_print: paged
+---
+
+# AfterWork Data Science: Data Visualisation with Python Project
+
+## 1. Defining the Question
+
+### a) Specifying the Data Analysis Question
+Help the management of Hilton International Hotels decide on the strategies that will lead to revenue growth.
+
+### b) Defining the Metric for Success
+The solutions to the following questions will help us answer our research question:
+
+* When is the best time of year to book a hotel room?
+* When is the optimal length of stay in order to get the best daily rate?
+* How will you know if a hotel was likely to receive a disproportionately high number of special requests?
+
+### c) Understanding the context
+You have a dataset containing information on the various chain of hotels, including when customers made
+the booking, length of stay, the number of adults, children, or babies, and the number of available parking
+spaces, among other things
+
+### d) Recording the Experimental Designs
+The steps to be taken include:
+    Load dataset and preview its summarized information to get a feel of what you will be working with.
+    Carry out data cleaning.
+    Carry out data analysis.
+    Interpret results.
+    Provide recommendations based on results of analysis.
+    Challenge your solution.
+
+### e) Data Relevance
+How relevant was the provided data?
+The data is relevant because it has all the information to answer our questions
+
+
+## 2. Reading the Data
+```{r}
+install.packages("tidyverse")
+
+```
+```{r}
+library(ggplot2)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(tibble)
+library(forcats)
+library(purrr)
+library(readr)
+
+```
+```{r}
+# Load the data below
+# --- 
+# Dataset url = https://bit.ly/2WvQbhJ
+# --- 
+# YOUR CODE GOES BELOW
+# 
+hotels_df <- read_csv('hotel_bookings.csv')
+
+```
+
+```{r}
+# Checking the first 5 rows of data
+# ---
+# YOUR CODE GOES BELOW
+# 
+head(hotels_df, 5)
+```
+
+```{r}
+# Checking the last 5 rows of data
+# ---
+# YOUR CODE GOES BELOW
+# 
+tail(hotels_df, 5)
+```
+
+```{r}
+# Sample 10 rows of data
+# ---
+# YOUR CODE GOES BELOW
+# 
+sample_n(hotels_df, 10)
+```
+
+```{r}
+# Checking number of rows and columns
+# ---
+# YOUR CODE GOES BELOW
+#  
+dim(hotels_df)
+```
+
+```{r}
+# Checking datatypes
+# ---
+# YOUR CODE GOES BELOW
+# 
+str(hotels_df)
+```
+
+```{r}
+glimpse(hotels_df)
+apply(hotels_df, 2, table)
+```
+
+Record your general observations below:
+
+Observation 1
+There are columns "agent" and "company" with null object and some columns(meal, distribution_channel) whose value is "undefined"
+"agent" and "company" variable are of type character but it should be integer
+Observation 2
+The column names are standardized and there seems to be no column with unique id
+Observation 3
+Some variable have outliers values i.e "lead_time"
+
+
+## 3. External Data Source Validation
+The data is originally from the article Hotel Booking Demand Datasets, by Nuno Antonio, Ana Almeida, and Luis Nunes for Data in Brief, Volume 22, February 2019.
+
+
+## 4. Data Preparation
+### Performing Data Cleaning
+```{r}
+# Checking datatypes and missing entries of all the variables
+# ---
+# YOUR CODE GOES BELOW
+#
+colSums(is.na(hotels_df))
+
+glimpse(hotels_df)
+
+```
+
+We observe the following from our dataset:
+
+Observation 1
+There are 4 missing values in the whole dataset on variable "children"
+Observation 2
+"agent" variable has integer values but of type character. The variable also has "NULL" values as character
+
+```{r}
+# Checking how many duplicate rows are there in the data
+# ---
+# YOUR CODE GOES BELOW
+# 
+nrow(hotels_df[duplicated(hotels_df),])
+```
+
+We choose to keep the duplicates because we don't have a unique identifier to actually proof that we have duplicates.
+
+```{r}
+# Checking if any of the columns are all null. NULL or NA?????
+# ---
+# YOUR CODE GOES BELOW
+# 
+
+for(c in 1: ncol(hotels_df)){
+  if (all(is.na(hotels_df[,c]))){
+    print(c)
+    #print(hotels_df[,11])
+  }
+  
+}
+
+```
+
+We observe the following from our dataset:
+
+Observation 1
+there is no column whose all values are NA
+
+```{r}
+# Checking if any of the rows are all null
+# ---
+# YOUR CODE GOES BELOW
+# 
+for(i in 1:nrow(hotels_df)){
+  if(all(is.na(hotels_df[i,]))){
+    print(i)
+  }
+}
+```
+
+We observe the following from our dataset:
+
+Observation 1
+there is no row which is all null
+Observation 2
+```{r}
+install.packages("reshape2")
+
+# loading the package
+library(reshape2)
+```
+
+```{r}
+# Checking the correlation of the features through the use of 
+# visualizations the correlation using heatmap
+# ---
+# YOUR CODE GOES BELOW
+# 
+
+# remove missing values
+heatmap_df <- hotels_df %>%
+  na.omit() %>%
+  #select numeric columns
+  select( agent, is_canceled, stays_in_weekend_nights, stays_in_week_nights, required_car_parking_spaces,total_of_special_requests, days_in_waiting_list, booking_changes, is_repeated_guest,previous_cancellations,previous_bookings_not_canceled)
+  
+
+
+#get all the columns
+column <- c(names(heatmap_df))
+
+#convert the values to integer and remove NA
+heatmap_df[, column] <- apply(heatmap_df[,column], 2, function(x)as.integer(x))
+heatmap_df <- na.omit(heatmap_df)
+glimpse(heatmap_df)
+
+# Create a correlation matrix
+corr_matrix <- cor(heatmap_df, method="s")
+head(corr_matrix)
+
+# Create a table with long form
+corr_df <- melt(corr_matrix)
+head(corr_df)
+
+# Plot the heatmap
+ggplot(corr_df, aes(Var1, Var2, fill = value)) + 
+  geom_tile(color = "black") + 
+  geom_text(
+    aes(label = round(value, 2)), 
+    color = "white"
+  ) +
+  coord_fixed() + 
+  labs(
+    fill="Pearson Correlation"
+  ) +
+  scale_fill_gradient2(
+    low = "blue", 
+    high = "red",
+    mid = "white", 
+    limit = c(-1,1)
+  ) + 
+  theme(
+    axis.title.x = element_text(angle=90),
+    axis.title.y = element_blank(),
+    
+  )
+```
+
+We observe the following from our dataset:
+
+Observation 1
+Observation 2
+
+```{r}
+# Dropping company column because it has alot of missing values 
+# and we won't need to answer any of our questions
+# ---
+# YOUR CODE GOES BELOW
+# 
+
+dim(hotels_df)
+hotels_df <- select(hotels_df, -c("company"))
+dim(hotels_df)
+anyNA(hotels_df$agent)
+
+```
+
+From the data variable description we see that the Distribution Channel categoricy that tells us about Booking distribution.
+
+The term “TA” means “Travel Agents”
+The term “TO” means “Tour Operators”
+This allows us to fill the missing values in the agents column with TO
+
+```{r}
+# We replace the mising values i.e. for TO
+# ---
+# YOUR GOES BELOW
+#
+#convert the character type for agent to integer
+typeof(hotels_df$agent)
+hotels_df$agent <- as.integer(hotels_df$agent)
+typeof(hotels_df$agent)
+
+#check for missing values
+anyNA(hotels_df$agent)
+
+#replace the missing values with mean of agent for distribution channel == "TA/T0"
+hotels_df$agent[is.na(hotels_df$agent)] <- mean(hotels_df$agent[hotels_df$distribution_channel == "TA/TO"], na.rm = TRUE)
+anyNA(hotels_df$agent)
+agent_mod_hotels_df <- hotels_df
+
+```
+
+```{r}
+# We drop rows where there is no adult, baby and child as 
+# these records won't help us.
+# ---
+# YOUR GOES BELOW
+#
+head(agent_mod_hotels_df)
+has_family_hotels_df <- agent_mod_hotels_df%>%
+  filter(!(adults ==0 & babies==0 & children==0))
+
+  
+```
+```{r}
+#confirm there is no rows where there is no adult, baby and child as
+has_family_hotels_df%>%
+  filter(adults==0&children==0&babies==0)
+```
+
+```{r}
+# We replace missing children values with rounded mean value
+# ---
+# Hint i.e. use round()
+# ---
+# YOUR GOES BELOW
+#
+has_family_hotels_df$children[is.na(has_family_hotels_df$children)] <- round(mean(has_family_hotels_df$children, na.rm = TRUE),1)
+has_family_hotels_df$children[is.na(has_family_hotels_df$children)] 
+```
+
+```{r}
+# Checking for missing values in the dataframe
+# ---
+# YOUR GOES BELOW
+#
+colSums(is.na(has_family_hotels_df))
+
+glimpse(has_family_hotels_df)
+```
+
+```{r}
+# Converting the datatypes of the following columns from float to integer
+# i.e. children, company, agent
+# ---
+# YOUR GOES BELOW
+# 
+#convert all variable with double floating point to integer
+column <- c("adults","babies","agent", "children", "is_canceled", "arrival_date_year", "lead_time", "arrival_date_week_number", "arrival_date_day_of_month", "stays_in_weekend_nights", "stays_in_week_nights", "adr", "required_car_parking_spaces","total_of_special_requests", "days_in_waiting_list", "booking_changes", "is_repeated_guest","previous_cancellations","previous_bookings_not_canceled")
+glimpse(has_family_hotels_df)
+has_family_hotels_df[, column] <- apply(has_family_hotels_df[,column], 2, function(x)as.integer(x))
+glimpse(has_family_hotels_df)
+```
+```{r}
+#assign a the cleaned df to a new variable and check the shape of df
+#get the total guest as sum of adult, children and babies
+has_family_hotels_df <- has_family_hotels_df%>%
+  mutate(guest = adults + children + babies, stays_period=stays_in_weekend_nights+stays_in_week_nights)
+
+cleaned_hotels_df <- has_family_hotels_df
+dim(cleaned_hotels_df)
+
+```
+
+
+## 5. Solution Implementation
+
+### 5.a) Questions
+
+```{r}
+# 1. How many bookings were cancelled?
+# ---
+# Visualisation: Barplot
+#get total number of booking cancelled
+is_canceled_df <- cleaned_hotels_df %>%
+  group_by(is_canceled)%>%
+  summarise(booking_canceled = length(is_canceled))%>%
+  mutate(percent_canceled = 100 * (booking_canceled/sum(booking_canceled)) )
+is_canceled_df$is_canceled <- c("Not canceled", "canceled")
+is_canceled_df
+ggplot(is_canceled_df, aes(x = is_canceled, y = percent_canceled)) +
+  geom_col(
+    stat="identity", width=0.5, fill = "#0099f9"
+  ) +
+  labs(
+    title = "Comparison for hotel booking canceled and not canceled", 
+    x = "Status of booking", 
+    y = "percentage of boooking"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, size=16, family="Times New Roman"), 
+    axis.text.x = element_text(angle = 45, hjust = 0.5)
+  )
+
+```
+
+
+```{r}
+# 2. What was the booking ratio between resort hotel and city hotel?
+# ---
+# Barplot of booking ratio between resort hotel and city hotel
+hotel_type_df <- cleaned_hotels_df %>%
+  group_by(hotel)%>%
+  summarise(hotel_count = length(hotel))%>%
+  mutate(percent_hotel = 100 * (hotel_count/sum(hotel_count)) )
+
+hotel_type_df
+ggplot(hotel_type_df, aes(x = hotel, y = percent_hotel)) +
+  geom_col(
+    stat="identity", width=0.5, fill = "darkblue"
+  ) +
+  labs(
+    title = "Comparison for tye of hotel booked", 
+    x = "hotel type", 
+    y = "percentage of hotel_type"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, size=16, family="Times New Roman"), 
+    axis.text.x = element_text(angle = 45, hjust = 0.5)
+  )
+```
+
+
+```{r}
+# 3. What was the percentage of booking for each year?
+# ---
+# 
+year_df <- cleaned_hotels_df %>%
+  group_by(arrival_date_year)%>%
+  summarise(year_count = length(arrival_date_year))%>%
+  mutate(percent_year = 100 * (year_count/sum(year_count)) )
+
+year_df
+ggplot(year_df, aes(x = arrival_date_year, y = percent_year)) +
+  geom_col(
+    stat="identity", width=0.5, fill = "lightblue"
+  ) +
+  labs(
+    title = "Comparison for booking across the years", 
+    x = "year", 
+    y = "total booking as a percentage"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, size=16, family="Times New Roman"), 
+    axis.text.x = element_text(angle = 45, hjust = 0.5)
+  )
+```
+
+```{r}
+# 4. Which were the most busiest months for hotels?
+# ---
+# 
+month_df <- cleaned_hotels_df %>%
+  group_by(arrival_date_month)%>%
+  summarise(guest_per_month = sum(guest))
+ 
+month_df
+ggplot(month_df, aes(x = arrival_date_month, y = guest_per_month)) +
+  geom_col(
+    stat="identity", width=0.5, fill = "cornflowerblue"
+  ) +
+  labs(
+    title = "total guest per month", 
+    x = "months", 
+    y = "total guest"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, size=16, family="Times New Roman"), 
+    axis.text.x = element_text(angle = 45, hjust = 0.5)
+  )
+
+```
+
+
+```{r}
+# 5. From which top 3 countries did most guests come from?
+# --- 
+# YOUR GOES BELOW
+#
+countries_df <- cleaned_hotels_df %>%
+  group_by(country)%>%
+  summarise(total_guest = sum(guest))%>%
+  top_n(3)
+
+countries_df
+ggplot(countries_df, aes(x = country, y = total_guest)) +
+  geom_col(
+    stat="identity", width=0.5, fill = "navyblue"
+  ) +
+  labs(
+    title = "top tourist countries", 
+    x = "countries", 
+    y = "guest"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, size=16, family="Times New Roman"), 
+    axis.text.x = element_text(angle = 45, hjust = 0.5)
+  )
+
+```
+
+```{r}
+# 6.a) How long do most people stay in hotels?
+#   b) By city and resort? Separate the data by hotel
+# ---
+# 
+stay_period_df <- cleaned_hotels_df %>%
+  group_by(hotel)%>%
+  summarise(stays_period = mean(stays_period))
+
+stay_period_df
+ggplot(stay_period_df, aes(x = hotel, y = stays_period)) +
+  geom_col(
+    stat="identity", width=0.5, fill = "darkblue"
+  ) +
+  labs(
+    title = "mean time stayed in hotel", 
+    x = "hotel", 
+    y = "period_stayed"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, size=16, family="Times New Roman"), 
+    axis.text.x = element_text(angle = 45, hjust = 0.5)
+  )
+
+```
+
+
+```{r}
+# 7. Which was the most booked accommodation type (Single, Couple, Family)?
+# ---
+#
+#NO variable with such information.
+#assume single status = 1 adults, no children and no baby; couple= 2 adults no children and no baby, family rest
+accommodation_df <- cleaned_hotels_df
+accommodation_df <- accommodation_df %>%
+  filter(adults==1 & children==0 & babies==0)%>%
+  mutate(marital_status = "single")
+
+
+filter(accommodation_df, (adults >1 & (children>0)))
+nrow(accommodation_df$marital_status[accommodation_df$marital_status=="single"])
+
+
+
+```
+
+### 5.b) Recommendations
+From the above analysis, below are our recommendations:
+1. Countries to target for advertisement are PRT, GBR and France, in that order bacause most guest came from there
+2. Offer good deals for the month of April to August because that when most people visit
+3. Hotel needs to revisit the condition around 2016 because that was when most guest came in
+4. City hotel was the more booked than resort hotel but guest stayed longer in resort hotel. Management needs to provide revenue data to help make decision
+
+
+## 6. Challenging your Solution
+In this step, we review our solution and implement approaches that could potentially provide a better outcome. In our case, we could propose the following question that wasn't answered in our solution because it couldn't have greatly contributed to our recommendation.
+
+```{r}
+# When should hotels provide special offers?
+# ---
+# YOUR GOES BELOW
+# 
+#1. how many of our guest required parking
+
+parking_df <- cleaned_hotels_df %>%
+  group_by(required_car_parking_spaces)%>%
+  summarise(parking_spaces = length(required_car_parking_spaces))
+  
+
+parking_df
+ggplot(parking_df, aes(x = required_car_parking_spaces, y = parking_spaces)) +
+  geom_col(
+    stat="identity", width=0.5, fill = "darkblue"
+  ) +
+  labs(
+    title = "Parking requirement by guest", 
+    x = "number of parking_space", 
+    y = "frequency of parking required"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, size=16, family="Times New Roman"), 
+    axis.text.x = element_text(angle = 45, hjust = 0.5)
+  )
+
+```
+
+Our observations:
+-April to August are when most guest visit, so hotel should provide special offers to other months other than April to August to attract off holiday guest
+most guest dont require parking
+
+How does this observation tie to our solution?
+1. hotel can save on investing on parking spaces
+
+## 7. Follow up questions
+During this step, you rethink and propose other ways that you can improve your solution.
+
+a). Did we have the right data?
+1. Yes, but more data can help make good decision like hotel revenue
+2. There was no column with family status(single, couple, married)
+b). Do we need other data to answer our question?
+revenue data, family status
+c). Did we have the right question?
+Yes
+
+
